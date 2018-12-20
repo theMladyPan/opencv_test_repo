@@ -10,12 +10,17 @@
 using namespace cv;
 using namespace std;
 
-
+#define TEST_IMAGE "/home/stanke/test_HQ.jpg";
 
 int main(int argc, char *argv[])
 {
-  cout << "Hello" <<argc<<argv<< endl;
-  auto image_name = "/home/stanke/test_HQ.jpg";
+  string image_name;
+  if(argc>1){
+      image_name = argv[1];
+    }
+  if(image_name.empty()){
+      image_name = TEST_IMAGE;
+    }
   auto iMat = new Mat();
   auto destMat = new Mat();
   *iMat = imread(image_name, CV_8UC1);
@@ -33,7 +38,7 @@ int main(int argc, char *argv[])
   int *temp = new int();
   auto dst_it = destMat->begin<uint8_t>();
   for(auto it=iMat->begin<uint8_t>();it!=iMat->end<uint8_t>();it++){
-      *temp = sqrt(*it);
+      *temp = pow(*it, 1.2);
       *temp = min(*temp, 255);
       *dst_it++= *temp;
     }
