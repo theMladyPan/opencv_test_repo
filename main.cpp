@@ -10,6 +10,7 @@
 #include <math.h>
 #include <cstdlib>
 #include "noise_filter.h"
+#include "segmentation.h"
 
 using namespace cv;
 using namespace std;
@@ -57,6 +58,9 @@ int main(int argc, char *argv[])
       imshow("Display window", *destMat);
       waitKey(0);
     }
+
+  Segmentation *segm = new Segmentation(*iMat);
+  segm->calculate();
 
 
   delete iMat;
