@@ -30,28 +30,22 @@ int main(int argc, char *argv[])
   auto destMat = new Mat();
   *iMat = imread(image_name, CV_8UC1);
   *destMat = Mat::zeros(iMat->rows, iMat->cols, CV_8UC1);
-  if(iMat->empty()){
+  resize(*iMat, *iMat, Size(),0.3, 0.3, INTER_CUBIC);
+  adaptiveThreshold(*iMat,*destMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 15, 5);
+
+  if(destMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
     }
 
   namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
-  // imshow( "Display window", *iMat );                   // Show our image inside it.
-
-  imshow("Display window", *iMat);
+  imshow( "Display window", *destMat );                   // Show our image inside it.
   waitKey(0);
 
-  PixAttrPool *pool = new PixAttrPool();
-  cout << pool->addPixAttr().getColor() << endl;
+  Segmentation seg(*destMat);
+  seg.calculate();
 
-  cout << pool->addPixAttr().getColor() << endl;
-  auto newPA = pool->addPixAttr();
-  newPA.addPair(1,2);
-  cout << pool->hasPixAttr(&newPA)<<endl;
-  cout << pool->hasPixAttr(new PixAttr(157))<<endl;
-  cout << getIndex(pool, pair<uint16_t, uint16_t>(1,2));
 
-  delete pool;
   delete iMat;
   delete destMat;
   return 0;

@@ -26,6 +26,7 @@ public:
     PixAttr(uint16_t index);
     uint16_t getIndex();
     Scalar getColor();
+    uint16_t getNOfPixels();
     /** Add pair(column, row) for common attribute */
     void addPair(uint16_t column, uint16_t row);
     bool hasPair(pair<uint16_t, uint16_t> coordinate);
@@ -40,11 +41,11 @@ bool operator == (PixAttr lPA, PixAttr rPA);
 class PixAttrPool
 {
 private:
-    vector<PixAttr> *pool = new vector<PixAttr>();
     /// Highest index of PixAttr in pool
     uint16_t highestIndex;
     friend uint16_t getIndex(PixAttrPool *pool, pair<uint16_t, uint16_t> coordinates);
 public:
+    vector<PixAttr> *pool = new vector<PixAttr>();
     /// Create new pool of PixAttrs
     PixAttrPool();
     /// Add PixAttr to pool
@@ -52,7 +53,8 @@ public:
     /// Generate and return new PixAttr to pool
     PixAttr addPixAttr();
     bool hasPixAttr(PixAttr *pa);
+    PixAttr *getPixAttrByPair(pair<uint16_t, uint16_t> coordinate);
+    void listPixAttrs();
 };
-
 
 #endif // PIXATTR_H

@@ -15,6 +15,11 @@ Scalar PixAttr::getColor()
   return *(this->color);
 }
 
+uint16_t PixAttr::getNOfPixels()
+{
+  return this->nOfPixels;
+}
+
 void PixAttr::addPair(uint16_t column, uint16_t row)
 {
   pixels->push_back(pair<uint16_t, uint16_t>(column, row));
@@ -67,6 +72,23 @@ bool PixAttrPool::hasPixAttr(PixAttr* pa)
         }
     }
   return false;
+}
+
+PixAttr *PixAttrPool::getPixAttrByPair(pair<uint16_t, uint16_t> coordinate)
+{
+  for(auto it=this->pool->begin();it!=this->pool->end();it++){
+      if(it->hasPair(coordinate)){
+          return &(*it);
+        }
+    }
+  throw runtime_error("No PixAttr found in pool");
+}
+
+void PixAttrPool::listPixAttrs()
+{
+  for(auto it=this->pool->begin();it!=this->pool->end();it++){
+      cout << "Index: " << it->getIndex() << ", Color: " << it->getColor() << ", nOfPixels: " << it->getNOfPixels() << endl;
+    }
 }
 
 bool operator ==(PixAttr lPA, PixAttr rPA)
