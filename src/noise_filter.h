@@ -5,6 +5,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
+#include "segmentation.h"
 
 
 using namespace cv;

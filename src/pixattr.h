@@ -15,8 +15,8 @@ static RNG rng(12345);
 class PixAttr
 {
 private:
-    uint8_t nOfPixels = 0;
-    vector<pair<uint8_t, uint8_t>> *pixels = new vector<pair<uint8_t, uint8_t>>();
+    uint16_t nOfPixels = 0;
+    vector<pair<uint16_t, uint16_t>> *pixels = new vector<pair<uint16_t, uint16_t>>();
     /// Unique index for PixAttr
     uint16_t index;
     Scalar *color = new Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
@@ -27,7 +27,9 @@ public:
     uint16_t getIndex();
     Scalar getColor();
     /** Add pair(column, row) for common attribute */
-    void addPair(uint8_t column, uint8_t row);
+    void addPair(uint16_t column, uint16_t row);
+    bool hasPair(pair<uint16_t, uint16_t> coordinate);
+
 
 };
 /// Compare two attributes based on index
@@ -41,6 +43,7 @@ private:
     vector<PixAttr> *pool = new vector<PixAttr>();
     /// Highest index of PixAttr in pool
     uint16_t highestIndex;
+    friend uint16_t getIndex(PixAttrPool *pool, pair<uint16_t, uint16_t> coordinates);
 public:
     /// Create new pool of PixAttrs
     PixAttrPool();
@@ -50,5 +53,6 @@ public:
     PixAttr addPixAttr();
     bool hasPixAttr(PixAttr *pa);
 };
+
 
 #endif // PIXATTR_H

@@ -15,10 +15,20 @@ Scalar PixAttr::getColor()
   return *(this->color);
 }
 
-void PixAttr::addPair(uint8_t column, uint8_t row)
+void PixAttr::addPair(uint16_t column, uint16_t row)
 {
-  pixels->push_back(pair<uint8_t, uint8_t>(column, row));
+  pixels->push_back(pair<uint16_t, uint16_t>(column, row));
   this->nOfPixels++;
+}
+
+bool PixAttr::hasPair(pair<uint16_t, uint16_t> coordinate)
+{
+  for(auto it=this->pixels->begin();it!=this->pixels->end();it++){
+      if(coordinate.first == it->first && coordinate.second == it->second){
+          return true;
+        }
+    }
+  return false;
 }
 
 bool operator>(PixAttr lPA, PixAttr rPA)
@@ -62,4 +72,14 @@ bool PixAttrPool::hasPixAttr(PixAttr* pa)
 bool operator ==(PixAttr lPA, PixAttr rPA)
 {
   return lPA.getIndex() == rPA.getIndex();
+}
+
+uint16_t getIndex(PixAttrPool *pool, pair<uint16_t, uint16_t> coordinates)
+{
+  for(auto it=pool->pool->begin();it!=pool->pool->end();it++){
+      if(it->hasPair(coordinates)){
+          return it->getIndex();
+        }
+    }
+  return 0;
 }

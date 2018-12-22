@@ -10,7 +10,6 @@
 #include <math.h>
 #include <cstdlib>
 #include "noise_filter.h"
-#include "segmentation.h"
 
 using namespace cv;
 using namespace std;
@@ -27,15 +26,6 @@ int main(int argc, char *argv[])
       image_name = TEST_IMAGE;
     }
 
-  int at_block_size, at_C;
-  if(argc>3){
-      at_block_size = atoi(argv[2]);
-      at_C = atoi(argv[3]);
-    }else {
-      at_block_size = 5;
-      at_C = 0;
-    }
-
   auto iMat = new Mat();
   auto destMat = new Mat();
   *iMat = imread(image_name, CV_8UC1);
@@ -50,19 +40,18 @@ int main(int argc, char *argv[])
 
   imshow("Display window", *iMat);
   waitKey(0);
-  adaptiveThreshold(*iMat, *destMat,255, ADAPTIVE_THRESH_GAUSSIAN_C,THRESH_BINARY,at_block_size, at_C);
-  if(destMat->empty()){
-      return -2;
-    }else{
-      resize(*destMat, *destMat, Size(),0.3, 0.3, INTER_CUBIC);
-      imshow("Display window", *destMat);
-      waitKey(0);
-    }
 
-  Segmentation *segm = new Segmentation(*iMat);
-  segm->calculate();
+  PixAttrPool *pool = new PixAttrPool();
+  cout << pool->addPixAttr().getColor() << endl;
 
+  cout << pool->addPixAttr().getColor() << endl;
+  auto newPA = pool->addPixAttr();
+  newPA.addPair(1,2);
+  cout << pool->hasPixAttr(&newPA)<<endl;
+  cout << pool->hasPixAttr(new PixAttr(157))<<endl;
+  cout << getIndex(pool, pair<uint16_t, uint16_t>(1,2));
 
+  delete pool;
   delete iMat;
   delete destMat;
   return 0;
