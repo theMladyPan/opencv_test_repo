@@ -24,6 +24,7 @@ set( project_sources
    main.cpp
    src/noise_filter.cpp
    src/segmentation.cpp
+   src/pixattr.cpp
 )
 add_executable(${PROJECT_NAME} ${project_sources})
 target_link_libraries (${PROJECT_NAME}  ${EXTRA_LIBS})

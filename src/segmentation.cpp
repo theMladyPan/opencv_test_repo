@@ -11,7 +11,9 @@ bool Segmentation::colorUsed(Scalar color)
 
 void Segmentation::calculate()
 {
-  while(ommitedPixInImage()){
+  bool changeOccured = true;
+  while(changeOccured){
+      changeOccured = false;
       cout<<"kek";
     }
 }
@@ -23,6 +25,7 @@ void Segmentation::useColor(Scalar color)
 
 bool Segmentation::ommitedPixInImage(int ommited)
 {
+  // default for ommited is 255 - means pixel was not processed yet
   for(auto it=this->mat->begin<uint8_t>();it!=this->mat->end<uint8_t>();it++){
       if(*it == ommited){
           return true;
