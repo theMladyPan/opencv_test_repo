@@ -6,6 +6,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d.hpp>
+#include <opencv2/core/opengl.hpp>
 #include <chrono>
 #include <thread>
 
@@ -16,8 +17,8 @@
 using namespace cv;
 using namespace std;
 
-#define MAX_32BIT 4294967295;
-#define TEST_IMAGE "/home/stanke/test.png";
+#define MAX_32BIT 4294967295
+#define TEST_IMAGE "/home/stanke/test.jpg"
 
 
 // segmentation PoC
@@ -26,6 +27,7 @@ private:
   Mat *_originalArray = new Mat();
   Mat *_segmentedArray = new Mat();
   Mat *_segmented8bit = new Mat();
+  ogl::Texture2D* _Gtex = new ogl::Texture2D;
   uint32_t _segmentN = 1;
 
   void firstIteration(){
@@ -87,6 +89,7 @@ private:
   }
   void convertTo8bit();
   void nIterations();
+  void convToGtex();
 public:
   Segmentation(Mat *inputArray){
     *_segmentedArray = Mat::zeros(inputArray->rows, inputArray->cols, CV_32FC1);
@@ -103,13 +106,18 @@ public:
     return *_originalArray;
   }
 
-};
+  ogl::Texture2D getGtex(){
+      convToGtex();
+      return *_Gtex;
+  }
 
+};
 
 void Segmentation::nIterations(){
   bool changeOcc = true;
   uint32_t nOfIteration = 0;
   uint16_t nOfChanges;
+  namedWindow("progress", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_OPENGL);
   while (changeOcc){
       changeOcc = false;
       nOfChanges = 0;
@@ -147,8 +155,8 @@ void Segmentation::nIterations(){
             }
         }
       cout<<nOfIteration<<","<<nOfChanges<<endl;
-      /*imshow("Display window", get8BitSegments());
-      waitKey(0);*/
+      imshow("progress", getGtex());
+      updateWindow("progress");
     }
 }
 
@@ -158,6 +166,21 @@ void Segmentation::convertTo8bit(){
           _originalArray->at<uint8_t>(row, col) = uint8_t(_segmentedArray->at<uint32_t>(row, col) % 256);
         }
     }
+}
+
+void Segmentation::convToGtex(){
+    convertTo8bit();
+    _Gtex->copyFrom(*_originalArray);
+}
+
+int test(){
+    namedWindow("test", WINDOW_OPENGL|WINDOW_AUTOSIZE|WINDOW_KEEPRATIO);
+    Mat imat = imread(TEST_IMAGE, CV_8UC1);
+    ogl::Texture2D Gtex;
+    Gtex = ogl::Texture2D(imat);
+    imshow("test",Gtex);
+    waitKey(0);
+    return 1;
 }
 
 
@@ -175,15 +198,15 @@ int main(int argc, char *argv[])
   auto destMat = new Mat();
   *iMat = imread(image_name, CV_8UC1);
   *destMat = Mat::zeros(iMat->rows, iMat->cols, CV_8UC1);
-  resize(*iMat, *iMat, Size(),1, 1, INTER_CUBIC);
-  adaptiveThreshold(*iMat,*destMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 11, 20);
+  resize(*iMat, *iMat, Size(),0.3, 0.3, INTER_CUBIC);
+  adaptiveThreshold(*iMat,*destMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 55, 5);
 
   if(destMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
     }
 
-  namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
+  namedWindow( "Display window", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_OPENGL );// Create a window for display.
   imshow( "Display window", *destMat );                   // Show our image inside it.
   waitKey(0);
 
@@ -194,7 +217,7 @@ int main(int argc, char *argv[])
   std::chrono::duration<double, std::milli> elapsed = end-start;
   std::cout << "Took " << elapsed.count() << " ms\n";
 
-  imshow("Display window", sgmt.get8BitSegments());
+  imshow("Display window", sgmt.getGtex());
   waitKey(0);
 
 
