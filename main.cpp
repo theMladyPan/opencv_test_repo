@@ -2,243 +2,102 @@
 #include <chrono>
 #include <stdlib.h>
 #include <iostream>
+#include <thread>
+#include <vector>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d.hpp>
-#include <opencv2/core/opengl.hpp>
-#include <chrono>
-#include <thread>
-#include <GL/gl.h>
 
-#include <math.h>
-#include <cstdlib>
-//#include "noise_filter.h"
 
 using namespace cv;
 using namespace std;
 
+#define TEST_IMAGE "./test.png"
 
-#define MAX_32BIT 4294967295
-#define TEST_IMAGE "/home/stanke/test.jpg"
-
-
-// segmentation PoC
-class Segmentation{
-private:
-  Mat *_originalArray = new Mat();
-  Mat *_segmentedArray = new Mat();
-  Mat *_segmented8bit = new Mat();
-  Mat *_changed = new Mat();
-  uint32_t _segmentN = 1;
-
-  void firstIteration(){
-    for(int row=0;row<_segmentedArray->rows;row++){
-        for(int col=0;col<_segmentedArray->cols;col++){
-            // copy matrix, turn pixels of interrest into 1;
-            if(_originalArray->at<uint8_t>(row,col)>0){
-                _segmentedArray->at<uint8_t>(row, col) = 1;
-              }
-          }
-      }
-
-    for(int row=0;row<this->_segmentedArray->rows;row++){
-        for(int col=0;col<this->_segmentedArray->cols;col++){
-            if(_originalArray->at<uint8_t>(row, col)>0){
-                // pixel nie je cierny
-                uint32_t neighbourVal = topOrLeftValue(row, col);
-                if(neighbourVal > 1){
-                    // sused ma uz pridelenu hodnotu
-                    _segmentedArray->at<uint32_t>(row, col) = neighbourVal;
-                  }else {
-                    _segmentedArray->at<uint32_t>(row, col) = ++_segmentN;
-                  }
-              }
-          }
-      }
-  }
-
-  uint32_t neighbourValue(int row, int col){
-    uint32_t botVal = MAX_32BIT;
-    uint32_t rightVal = MAX_32BIT;
-    uint32_t topVal = MAX_32BIT;
-    uint32_t leftVal = MAX_32BIT;
-    uint32_t temp = 0;
-    if(row>1){
-        temp = _segmentedArray->at<uint32_t>(row-1, col);
-        topVal = (temp==0)?MAX_32BIT:temp;
-      }
-    if(col>1){
-        temp = _segmentedArray->at<uint32_t>(row, col-1);
-        leftVal = (temp==0)?MAX_32BIT:temp;
-      }
-    if(row < _originalArray->rows - 1){
-        temp = _segmentedArray->at<uint32_t>(row+1, col);
-        botVal = (temp==0)?MAX_32BIT:temp;
-      }
-    if(col < _originalArray->cols - 1){
-        temp = _segmentedArray->at<uint32_t>(row, col+1);
-        rightVal = (temp==0)?MAX_32BIT:temp;
-      }
-    return min(min(botVal, rightVal), min(leftVal, rightVal));
-  }
-
-  uint32_t topOrLeftValue(int row, int col){
-    uint32_t topVal = MAX_32BIT;
-    uint32_t leftVal = MAX_32BIT;
-    if(row>1){
-        topVal = _segmentedArray->at<uint32_t>(row-1, col);
-      }
-    if(col>1){
-        leftVal = _segmentedArray->at<uint32_t>(row, col-1);
-      }
-    return min(topVal, leftVal);
-  }
-  void convertTo8bit();
-  void nIterations();
-  void convToGtex();
-public:
-  Segmentation(Mat *inputArray){
-    *_segmentedArray = Mat::zeros(inputArray->rows, inputArray->cols, CV_32FC1);
-    inputArray->copyTo(*_originalArray);
-    inputArray->copyTo(*_segmented8bit);
-    _changed->zeros(inputArray->rows, inputArray->cols, CV_8UC1);
-  }
-  Mat *computeSegments(){
-    firstIteration();
-    nIterations();
-    cout << "NofSegments: " << _segmentN <<endl;
-    return _segmentedArray;
-  }
-  Mat get8BitSegments(){
-    convertTo8bit();
-    return *_segmented8bit ;
-  }
-
-};
-
-void Segmentation::nIterations(){
-  bool changeOcc = true;
-  uint32_t nOfIteration = 0;
-  uint16_t nOfChanges;
-  while (changeOcc){
-      changeOcc = false;
-      nOfChanges = 0;
-      nOfIteration++;
-      _changed->zeros(_segmentedArray->rows, _segmentedArray->cols, _changed->type());
-      for(int row=0;row<_segmentedArray->rows;row++){
-          for(int col=0;col<_segmentedArray->cols;col++){
-              if(_originalArray->at<uint8_t>(row, col)>0){
-                  // pixel nie je cierny
-                  uint32_t neighbourVal = neighbourValue(row, col);
-                  uint32_t myVal = _segmentedArray->at<uint32_t>(row, col);
-
-                  if(neighbourVal < myVal and neighbourVal>1){
-                      // sused ma uz pridelenu hodnotu
-                      _segmentedArray->at<uint32_t>(row, col) = neighbourVal;
-                      cout << "X:"<<row<<" Y:"<<col<<" neighbour:"<<neighbourVal<<endl;
-                      //_changed->at<uint8_t>(row, col) = 127;
-                      changeOcc = true;
-                      nOfChanges++;
-                    }
-                }
-            }
-        }
-      /*for(int row=_segmentedArray->rows;row>0;row--){
-          for(int col=_segmentedArray->cols;col>0;col--){
-              if(_originalArray->at<uint8_t>(row, col)>0){
-                  // pixel nie je cierny
-                  uint32_t neighbourVal = neighbourValue(row, col);
-                  uint32_t myVal = _segmentedArray->at<uint32_t>(row, col);
-
-                  if(neighbourVal < myVal and neighbourVal>1){
-                      // sused ma uz pridelenu hodnotu
-                      _segmentedArray->at<uint32_t>(row, col) = neighbourVal;
-                      changeOcc = true;
-                      nOfChanges++;
-                    }
-                }
-            }
-        }*/
-      cout<<"Iteration: " << nOfIteration<<", Changes: " << nOfChanges<<endl;
-      convertTo8bit();
-      imshow("progress", *_segmented8bit);
-      waitKey(0);
-
-    }
+void showMat(Mat &mat){
+    imshow( "progress", mat );                   // Show our image inside it.
+    waitKey(0);
 }
-
-void Segmentation::convertTo8bit(){
-  for(int row=0;row<_segmentedArray->rows;row++){
-      for(int col=0;col<_segmentedArray->cols;col++){
-          uint32_t temp = _segmentedArray->at<uint32_t>(row, col);
-          if(temp>0){
-              _segmented8bit->at<uint8_t>(row, col) = static_cast<uint8_t>(temp % 128);
-          }else{
-              _segmented8bit->at<uint8_t>(row, col) = 0;
-          }
-        }
-    }
-}
-
-double foobar(double n){
-    if(n>1){
-        return n*foobar(n-1);
-    }else{
-        return 1;
-    }
-}
-
-template<typename fCall, typename param1>
-void timeit(fCall function, param1 param){
-    auto start = std::chrono::high_resolution_clock::now();
-    cout <<function(param);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> elapsed = end-start;
-    std::cout << "Took " << elapsed.count() << " ms\n";
-}
-
 
 int main(int argc, char **argv)
 {
-  string image_name;
-  if(argc>1){
-      image_name = argv[1];
+    string image_name;
+    if(argc>1){
+        image_name = argv[1];
+      }
+    if(image_name.empty()){
+        image_name = TEST_IMAGE;
+      }
+
+    namedWindow( "progress", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_GUI_EXPANDED);// Create a window for display.
+    Mat src, srcColor;
+    src = imread(image_name, CV_8UC1);
+    srcColor = imread(image_name, CV_8UC4);
+    showMat(srcColor);
+    if(src.empty()){
+        cerr << "image is empty!" << endl;
+        return -1;
+      }
+
+    Mat thr;
+    threshold(src, thr, 250, 255, THRESH_BINARY_INV);
+    Mat dilated;
+    Mat kernel = Mat::ones(3,3,CV_8U);
+    dilate(thr, dilated, kernel);
+    Mat distance;
+    distanceTransform(dilated, distance, DIST_L2, 3);
+    normalize(distance, distance, 0, 1, NORM_MINMAX);
+    threshold(distance, thr, 0.5, 1, THRESH_BINARY);
+    Mat dist8U;
+    thr.convertTo(dist8U, CV_8UC1);
+    vector<vector<Point>> contours;
+    findContours(dist8U, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    Mat markers = Mat::zeros(distance.size(), CV_32SC1);
+
+    for (size_t i = 0; i < contours.size(); i++)
+        {
+            drawContours(markers, contours, static_cast<int>(i), Scalar(static_cast<int>(i)+1), -1);
+        }
+
+    circle(markers, Point(5,5), 3, Scalar(255), -1);
+
+    cvtColor(src, src, COLOR_GRAY2BGR);
+    watershed(src, markers);
+
+    Mat markers8U;
+    markers.convertTo(markers8U, CV_8U);
+    bitwise_not(markers8U, markers8U);
+    showMat(markers8U);
+
+    // Generate random colors
+    vector<Vec3b> colors;
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        int b = theRNG().uniform(0, 256);
+        int g = theRNG().uniform(0, 256);
+        int r = theRNG().uniform(0, 256);
+        colors.push_back(Vec3b((uchar)b, (uchar)g, (uchar)r));
     }
-  if(image_name.empty()){
-      image_name = TEST_IMAGE;
+    // Create the result image
+    Mat dst = Mat::zeros(markers.size(), CV_8UC3);
+    // Fill labeled objects with random colors
+    for (int i = 0; i < markers.rows; i++)
+    {
+        for (int j = 0; j < markers.cols; j++)
+        {
+            int index = markers.at<int>(i,j);
+            if (index > 0 && index <= static_cast<int>(contours.size()))
+            {
+                dst.at<Vec3b>(i,j) = colors[index-1];
+            }
+        }
     }
+    Mat colored;
+    bitwise_and(src, dst, src);
+    addWeighted(src, 0.5, dst, 0.5, 0, dst);
+    showMat(dst);
 
-  auto iMat = new Mat();
-  auto destMat = new Mat();
-  *iMat = imread(image_name, CV_8UC1);
-  *destMat = Mat::zeros(iMat->rows, iMat->cols, CV_8UC1);
-  /*resize(*iMat, *iMat, Size(),1, 1, INTER_LINEAR);
-  adaptiveThreshold(*iMat,*destMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 175, 5);*/
-  threshold(*iMat, *destMat, 1, 255, THRESH_BINARY);
-
-  if(destMat->empty()){
-      cerr << "image is empty!" << endl;
-      return -1;
-    }
-
-  namedWindow( "progress", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_GUI_EXPANDED);// Create a window for display.
-  imshow( "progress", *destMat );                   // Show our image inside it.
-  waitKey(0);
-
-
-  auto start = std::chrono::high_resolution_clock::now();
-  Segmentation sgmt(destMat);
-  sgmt.computeSegments();
-  auto end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::milli> elapsed = end-start;
-  std::cout << "Took " << elapsed.count() << " ms\n";
-
-  imshow("progress", sgmt.get8BitSegments());
-  waitKey(0);
-
-
-  delete iMat;
-  delete destMat;
-  return 0;
+    return 0;
 }

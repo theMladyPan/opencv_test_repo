@@ -35,5 +35,11 @@ set( project_sources
 add_executable(${PROJECT_NAME} ${project_sources})
 target_link_libraries (${PROJECT_NAME}  ${EXTRA_LIBS})
 
+add_custom_command(
+        TARGET openCV_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/test.png
+                ${CMAKE_CURRENT_BINARY_DIR}/test.png)
+
 
 
