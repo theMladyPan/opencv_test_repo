@@ -9,6 +9,7 @@
 #include <opencv2/core/opengl.hpp>
 #include <chrono>
 #include <thread>
+#include <GL/gl.h>
 
 #include <math.h>
 #include <cstdlib>
@@ -16,6 +17,7 @@
 
 using namespace cv;
 using namespace std;
+
 
 #define MAX_32BIT 4294967295
 #define TEST_IMAGE "/home/stanke/test.jpg"
@@ -27,7 +29,7 @@ private:
   Mat *_originalArray = new Mat();
   Mat *_segmentedArray = new Mat();
   Mat *_segmented8bit = new Mat();
-  ogl::Texture2D* _Gtex = new ogl::Texture2D;
+  Mat *_changed = new Mat();
   uint32_t _segmentN = 1;
 
   void firstIteration(){
@@ -61,17 +63,22 @@ private:
     uint32_t rightVal = MAX_32BIT;
     uint32_t topVal = MAX_32BIT;
     uint32_t leftVal = MAX_32BIT;
+    uint32_t temp = 0;
     if(row>1){
-        topVal = _segmentedArray->at<uint32_t>(row-1, col);
+        temp = _segmentedArray->at<uint32_t>(row-1, col);
+        topVal = (temp==0)?MAX_32BIT:temp;
       }
     if(col>1){
-        leftVal = _segmentedArray->at<uint32_t>(row, col-1);
+        temp = _segmentedArray->at<uint32_t>(row, col-1);
+        leftVal = (temp==0)?MAX_32BIT:temp;
       }
     if(row < _originalArray->rows - 1){
-        botVal = _segmentedArray->at<uint32_t>(row+1, col);
+        temp = _segmentedArray->at<uint32_t>(row+1, col);
+        botVal = (temp==0)?MAX_32BIT:temp;
       }
     if(col < _originalArray->cols - 1){
-        rightVal = _segmentedArray->at<uint32_t>(row, col+1);
+        temp = _segmentedArray->at<uint32_t>(row, col+1);
+        rightVal = (temp==0)?MAX_32BIT:temp;
       }
     return min(min(botVal, rightVal), min(leftVal, rightVal));
   }
@@ -94,21 +101,18 @@ public:
   Segmentation(Mat *inputArray){
     *_segmentedArray = Mat::zeros(inputArray->rows, inputArray->cols, CV_32FC1);
     inputArray->copyTo(*_originalArray);
+    inputArray->copyTo(*_segmented8bit);
+    _changed->zeros(inputArray->rows, inputArray->cols, CV_8UC1);
   }
   Mat *computeSegments(){
     firstIteration();
     nIterations();
-    cout << _segmentN<<endl;
+    cout << "NofSegments: " << _segmentN <<endl;
     return _segmentedArray;
   }
   Mat get8BitSegments(){
     convertTo8bit();
-    return *_originalArray;
-  }
-
-  ogl::Texture2D getGtex(){
-      convToGtex();
-      return *_Gtex;
+    return *_segmented8bit ;
   }
 
 };
@@ -117,11 +121,11 @@ void Segmentation::nIterations(){
   bool changeOcc = true;
   uint32_t nOfIteration = 0;
   uint16_t nOfChanges;
-  namedWindow("progress", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_OPENGL);
   while (changeOcc){
       changeOcc = false;
       nOfChanges = 0;
       nOfIteration++;
+      _changed->zeros(_segmentedArray->rows, _segmentedArray->cols, _changed->type());
       for(int row=0;row<_segmentedArray->rows;row++){
           for(int col=0;col<_segmentedArray->cols;col++){
               if(_originalArray->at<uint8_t>(row, col)>0){
@@ -132,13 +136,15 @@ void Segmentation::nIterations(){
                   if(neighbourVal < myVal and neighbourVal>1){
                       // sused ma uz pridelenu hodnotu
                       _segmentedArray->at<uint32_t>(row, col) = neighbourVal;
+                      cout << "X:"<<row<<" Y:"<<col<<" neighbour:"<<neighbourVal<<endl;
+                      //_changed->at<uint8_t>(row, col) = 127;
                       changeOcc = true;
                       nOfChanges++;
                     }
                 }
             }
         }
-      for(int row=_segmentedArray->rows;row>0;row--){
+      /*for(int row=_segmentedArray->rows;row>0;row--){
           for(int col=_segmentedArray->cols;col>0;col--){
               if(_originalArray->at<uint8_t>(row, col)>0){
                   // pixel nie je cierny
@@ -153,38 +159,47 @@ void Segmentation::nIterations(){
                     }
                 }
             }
-        }
-      cout<<nOfIteration<<","<<nOfChanges<<endl;
-      imshow("progress", getGtex());
-      updateWindow("progress");
+        }*/
+      cout<<"Iteration: " << nOfIteration<<", Changes: " << nOfChanges<<endl;
+      convertTo8bit();
+      imshow("progress", *_segmented8bit);
+      waitKey(0);
+
     }
 }
 
 void Segmentation::convertTo8bit(){
   for(int row=0;row<_segmentedArray->rows;row++){
       for(int col=0;col<_segmentedArray->cols;col++){
-          _originalArray->at<uint8_t>(row, col) = uint8_t(_segmentedArray->at<uint32_t>(row, col) % 256);
+          uint32_t temp = _segmentedArray->at<uint32_t>(row, col);
+          if(temp>0){
+              _segmented8bit->at<uint8_t>(row, col) = static_cast<uint8_t>(temp % 128);
+          }else{
+              _segmented8bit->at<uint8_t>(row, col) = 0;
+          }
         }
     }
 }
 
-void Segmentation::convToGtex(){
-    convertTo8bit();
-    _Gtex->copyFrom(*_originalArray);
+double foobar(double n){
+    if(n>1){
+        return n*foobar(n-1);
+    }else{
+        return 1;
+    }
 }
 
-int test(){
-    namedWindow("test", WINDOW_OPENGL|WINDOW_AUTOSIZE|WINDOW_KEEPRATIO);
-    Mat imat = imread(TEST_IMAGE, CV_8UC1);
-    ogl::Texture2D Gtex;
-    Gtex = ogl::Texture2D(imat);
-    imshow("test",Gtex);
-    waitKey(0);
-    return 1;
+template<typename fCall, typename param1>
+void timeit(fCall function, param1 param){
+    auto start = std::chrono::high_resolution_clock::now();
+    cout <<function(param);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end-start;
+    std::cout << "Took " << elapsed.count() << " ms\n";
 }
 
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
   string image_name;
   if(argc>1){
@@ -198,17 +213,19 @@ int main(int argc, char *argv[])
   auto destMat = new Mat();
   *iMat = imread(image_name, CV_8UC1);
   *destMat = Mat::zeros(iMat->rows, iMat->cols, CV_8UC1);
-  resize(*iMat, *iMat, Size(),0.3, 0.3, INTER_CUBIC);
-  adaptiveThreshold(*iMat,*destMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 55, 5);
+  /*resize(*iMat, *iMat, Size(),1, 1, INTER_LINEAR);
+  adaptiveThreshold(*iMat,*destMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 175, 5);*/
+  threshold(*iMat, *destMat, 1, 255, THRESH_BINARY);
 
   if(destMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
     }
 
-  namedWindow( "Display window", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_OPENGL );// Create a window for display.
-  imshow( "Display window", *destMat );                   // Show our image inside it.
+  namedWindow( "progress", WINDOW_NORMAL|WINDOW_KEEPRATIO|WINDOW_GUI_EXPANDED);// Create a window for display.
+  imshow( "progress", *destMat );                   // Show our image inside it.
   waitKey(0);
+
 
   auto start = std::chrono::high_resolution_clock::now();
   Segmentation sgmt(destMat);
@@ -217,7 +234,7 @@ int main(int argc, char *argv[])
   std::chrono::duration<double, std::milli> elapsed = end-start;
   std::cout << "Took " << elapsed.count() << " ms\n";
 
-  imshow("Display window", sgmt.getGtex());
+  imshow("progress", sgmt.get8BitSegments());
   waitKey(0);
 
 
