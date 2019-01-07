@@ -17,33 +17,83 @@ RNG rng(12345);
 
 #define TEST_IMAGE "/home/stanke/samples/original2.png";
 
+Point avgPoint(vector<Point> &points){
+    int x(0), y(0), i(0);
+    for(auto it=points.begin();it!=points.end();it++){
+        x+=it->x;
+        y+=it->y;
+        i++;
+    }
+    return Point(static_cast<int>(x/i), static_cast<int>(y/i));
+}
+
 int showMat(string name, Mat &inpArr, int delay_ms=0){
     namedWindow(name, WINDOW_NORMAL);// Create a window for display.
     imshow(name, inpArr);                   // Show our image inside it.
     return waitKey(delay_ms);
 }
 
-void findEdges(contour input, Point &topLeft, Point &botRight){
-    Point candidateTopLeft = *input.begin();
-    Point candidateBotRight = *input.begin();
-
-    for(auto it=input.begin();it!=input.end(); it++){
-        if(it->x < candidateTopLeft.x or it->y < candidateTopLeft.y){
-            candidateTopLeft = *it;
-        }else if (it->x > candidateBotRight.x or it->y > candidateBotRight.y) {
-            candidateBotRight = *it;
+void filterHorizontalContours(vector<contour> &contours, vector<contour> &filtered){
+    /// does not work
+    int maxx, minx, maxy, miny;
+    filtered=vector<contour>();
+    cout<<contours.begin()->at(0);
+    for(auto contour=contours.begin();contour!=contours.end();contour++) {
+        cout<<"never executed?";
+        // for every contour
+        maxx=contour->begin()->x;
+        minx=contour->begin()->x;
+        maxy=contour->begin()->y;
+        miny=contour->begin()->y;
+        for(auto it=contour->begin();it!=contour->end();it++){
+            if(it->x>maxx){
+                maxx=it->x;
+            }else if (it->x<minx) {
+                minx=it->x;
+            }
+            if(it->y<miny){
+                miny=it->y;
+            }else if (it->y>maxy) {
+                maxy=it->y;
+            }
         }
+        if((maxy-miny)>(maxx-minx)){
+            filtered.push_back(*contour);
+        }
+        cout << (maxy-miny) << ":" << (maxx-minx)<<"\n";
     }
-    topLeft = candidateTopLeft;
-    botRight = candidateBotRight;
 }
 
+void findVerticalLines(contour input, Point &top, Point &bot){
+    vector<Point> candidateTop;
+    vector<Point> candidateBot;
+    int maxY(input.begin()->y);
+    int minY(input.begin()->y);
+
+    for(auto it=input.begin();it!=input.end(); it++){
+        if(it->y < minY){
+            minY = it->y;
+        }else if (it->y > maxY) {
+            maxY = it->y;
+        }
+    }
+    for(auto it=input.begin();it!=input.end(); it++){
+        if(it->y == minY){
+            candidateTop.push_back(*it);
+        }else if (it->y == maxY) {
+            candidateBot.push_back(*it);
+        }
+    }
+
+    top = avgPoint(candidateTop);
+    bot = avgPoint(candidateBot);
+}
 
 void drawColorContours(Mat &destArray, vector<contour> &contours, vector<Vec4i> &hierarchy){
     for( size_t i = 0; i< contours.size(); i++ )
     {
-        Scalar color = Scalar( rng.uniform(0, 256), rng.uniform(0,256), rng.uniform(0,256) );
-        drawContours( destArray, contours, (int)i, color, 1, LINE_8, hierarchy, 0 );
+        auto color = Scalar( 127,127,255 );
+        drawContours( destArray, contours, (int)i, color, 1, LINE_AA, hierarchy, 0);
     }
 }
 
@@ -65,12 +115,11 @@ int main(int argc, char *argv[])
   start = chrono::high_resolution_clock::now();
   auto iMat = new Mat();
   Mat original;
-  auto destMat = new Mat();
   original = imread(image_name, CV_8UC1);
   adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 35,25);
   copyMakeBorder(*iMat, *iMat, 1, 1, 1, 1, BORDER_CONSTANT, 255);
   copyMakeBorder(original, original, 1, 1, 1, 1, BORDER_CONSTANT, 255);
-  showMat("AT", *iMat);
+  showMat("AT", *iMat, 1);
   if(iMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
@@ -132,24 +181,44 @@ int main(int argc, char *argv[])
   }
 
   Mat arrLargeContours = Mat::zeros(drawing.rows, drawing.cols, CV_8UC3);
+
   drawColorContours(arrLargeContours, largeContours, hierarchy);
   //showMat("Large contours", arrLargeContours, 10);
 
   Mat withLine;
   Point tl, br;
   for(auto it=largeContours.begin(); it!=largeContours.end();it++){
-      findEdges(*it, tl, br);
-      arrowedLine(arrLargeContours,tl, br, Scalar(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256)), 1, LINE_8);
+      findVerticalLines(*it, tl, br);
+      //arrowedLine(arrLargeContours,tl, br, Scalar(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256)), 2, LINE_AA);
   }
 
   end = chrono::high_resolution_clock::now();
   elapsed = end-start;
-  putText(arrLargeContours, "Vertical line detector", Point(100,100), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_8);
+
+  putText(arrLargeContours, "Vertical line detector", Point(10,50), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_AA);
   Mat imatcolor = Mat(iMat->rows, iMat->cols, CV_8UC3);
   cvtColor(original, imatcolor,COLOR_GRAY2BGR);
   addWeighted(arrLargeContours, 0.5, imatcolor, 0.5, 0, arrLargeContours);
   cout << "Got and calculated in " << elapsed.count() << " ms\n";
-  showMat("Lines", arrLargeContours);
 
+  vector<RotatedRect> rectangles;
+  for(auto contour: largeContours) {
+    rectangles.push_back(minAreaRect(contour));
+  }
+  for(auto rectangle:rectangles){
+
+        Point2f rect_points[4]; rectangle.points( rect_points );
+        auto randomColor(Scalar(rng.uniform(0,256), rng.uniform(0,256), rng.uniform(0,256)));
+        for( int j = 0; j < 4; j++ ){
+          line( arrLargeContours, rect_points[j], rect_points[(j+1)%4], randomColor, 1, LINE_AA );
+        }
+        stringstream center;
+        float lesser(rectangle.size.width<rectangle.size.height?rectangle.size.width:rectangle.size.height);
+        center<<"Width "<<lesser<<" pix";
+        putText(arrLargeContours, center.str(), rectangle.center, FONT_HERSHEY_COMPLEX, 1, randomColor, 1, LINE_AA);
+
+}
+
+  showMat("Lines", arrLargeContours);
   return 0;
 }
