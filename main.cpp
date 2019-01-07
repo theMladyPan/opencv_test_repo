@@ -15,7 +15,7 @@ typedef vector<Point> contour;
 
 RNG rng(12345);
 
-#define TEST_IMAGE "/home/stanke/samples/threshold4.png";
+#define TEST_IMAGE "/home/stanke/samples/original2.png";
 
 int showMat(string name, Mat &inpArr, int delay_ms=0){
     namedWindow(name, WINDOW_NORMAL);// Create a window for display.
@@ -64,10 +64,13 @@ int main(int argc, char *argv[])
 
   start = chrono::high_resolution_clock::now();
   auto iMat = new Mat();
+  Mat original;
   auto destMat = new Mat();
-  *iMat = imread(image_name, CV_8UC1);
+  original = imread(image_name, CV_8UC1);
+  adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 35,25);
   copyMakeBorder(*iMat, *iMat, 1, 1, 1, 1, BORDER_CONSTANT, 255);
-
+  copyMakeBorder(original, original, 1, 1, 1, 1, BORDER_CONSTANT, 255);
+  showMat("AT", *iMat);
   if(iMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
@@ -141,9 +144,9 @@ int main(int argc, char *argv[])
 
   end = chrono::high_resolution_clock::now();
   elapsed = end-start;
-  putText(arrLargeContours, "Test", Point(100,100), FONT_HERSHEY_COMPLEX, 1, Scalar(0,0,255), 1, LINE_8);
+  putText(arrLargeContours, "Vertical line detector", Point(100,100), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_8);
   Mat imatcolor = Mat(iMat->rows, iMat->cols, CV_8UC3);
-  cvtColor(*iMat, imatcolor,COLOR_GRAY2BGR);
+  cvtColor(original, imatcolor,COLOR_GRAY2BGR);
   addWeighted(arrLargeContours, 0.5, imatcolor, 0.5, 0, arrLargeContours);
   cout << "Got and calculated in " << elapsed.count() << " ms\n";
   showMat("Lines", arrLargeContours);
