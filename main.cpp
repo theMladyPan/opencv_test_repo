@@ -27,76 +27,10 @@ double average(vector<float> &array){
     return average/static_cast<double>(num);
 }
 
-Point avgPoint(vector<Point> &points){
-    int x(0), y(0), i(0);
-    for(auto it=points.begin();it!=points.end();it++){
-        x+=it->x;
-        y+=it->y;
-        i++;
-    }
-    return Point(static_cast<int>(x/i), static_cast<int>(y/i));
-}
-
 int showMat(string name, Mat &inpArr, int delay_ms=0){
     namedWindow(name, WINDOW_NORMAL);// Create a window for display.
     imshow(name, inpArr);                   // Show our image inside it.
     return waitKey(delay_ms);
-}
-
-void filterHorizontalContours(vector<contour> &contours, vector<contour> &filtered){
-    /// does not work
-    int maxx, minx, maxy, miny;
-    filtered=vector<contour>();
-    cout<<contours.begin()->at(0);
-    for(auto contour=contours.begin();contour!=contours.end();contour++) {
-        cout<<"never executed?";
-        // for every contour
-        maxx=contour->begin()->x;
-        minx=contour->begin()->x;
-        maxy=contour->begin()->y;
-        miny=contour->begin()->y;
-        for(auto it=contour->begin();it!=contour->end();it++){
-            if(it->x>maxx){
-                maxx=it->x;
-            }else if (it->x<minx) {
-                minx=it->x;
-            }
-            if(it->y<miny){
-                miny=it->y;
-            }else if (it->y>maxy) {
-                maxy=it->y;
-            }
-        }
-        if((maxy-miny)>(maxx-minx)){
-            filtered.push_back(*contour);
-        }
-        cout << (maxy-miny) << ":" << (maxx-minx)<<"\n";
-    }
-}
-
-void findVerticalLines(contour input, Point &top, Point &bot){
-    vector<Point> candidateTop;
-    vector<Point> candidateBot;
-    int maxY(input.begin()->y);
-    int minY(input.begin()->y);
-
-    for(auto it=input.begin();it!=input.end(); it++){
-        if(it->y < minY){
-            minY = it->y;
-        }else if (it->y > maxY) {
-            maxY = it->y;
-        }
-    }
-    for(auto it=input.begin();it!=input.end(); it++){
-        if(it->y == minY){
-            candidateTop.push_back(*it);
-        }else if (it->y == maxY) {
-            candidateBot.push_back(*it);
-        }
-    }
-
-    top = avgPoint(candidateTop);
-    bot = avgPoint(candidateBot);
 }
 
 void drawColorContours(Mat &destArray, vector<contour> &contours, vector<Vec4i> &hierarchy){
