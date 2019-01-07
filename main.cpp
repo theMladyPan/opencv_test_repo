@@ -126,17 +126,16 @@ int main(int argc, char *argv[])
   auto iMat = new Mat();
   Mat original;
   original = imread(image_name, CV_8UC1);
-  auto ciarove = Mat(original);
-  for (int i = 100; i < original.rows; i+=100) {
-      line(ciarove, Point(0,i), Point(original.cols, i), Scalar(255,255,255), 2, LINE_8);
-  }
-  for (int i = 100; i < original.cols; i+=100) {
-      line(ciarove, Point(i,0), Point(i, original.rows), Scalar(255,255,255), 2, LINE_8);
-  }
   adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 35,25);
+  for (int i = 100; i < iMat->rows; i+=100) {
+      line(*iMat, Point(0,i), Point(iMat->cols, i), Scalar(255,255,255), 2, LINE_8);
+  }
+  for (int i = 100; i < iMat->cols; i+=100) {
+      line(*iMat, Point(i,0), Point(i, iMat->rows), Scalar(255,255,255), 2, LINE_8);
+  }
   copyMakeBorder(*iMat, *iMat, 1, 1, 1, 1, BORDER_CONSTANT, 255);
   copyMakeBorder(original, original, 1, 1, 1, 1, BORDER_CONSTANT, 255);
-  //showMat("AT", *iMat, 1);
+  showMat("AT", *iMat, 1);
   if(iMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
@@ -201,14 +200,14 @@ int main(int argc, char *argv[])
 
   drawColorContours(arrLargeContours, largeContours, hierarchy);
   //showMat("Large contours", arrLargeContours, 10);
-
+/*
   Mat withLine;
   Point tl, br;
   for(auto it=largeContours.begin(); it!=largeContours.end();it++){
       findVerticalLines(*it, tl, br);
-      //arrowedLine(arrLargeContours,tl, br, Scalar(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256)), 2, LINE_AA);
+      arrowedLine(arrLargeContours,tl, br, Scalar(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256)), 2, LINE_AA);
   }
-
+*/
   end = chrono::high_resolution_clock::now();
   elapsed = end-start;
 
