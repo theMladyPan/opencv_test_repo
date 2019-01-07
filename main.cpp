@@ -15,7 +15,7 @@ typedef vector<Point> contour;
 
 RNG rng(12345);
 
-#define TEST_IMAGE "/home/stanke/samples/original2.png";
+#define TEST_IMAGE "/home/stanke/samples/original3.png";
 
 double average(vector<float> &array){
     double average(0);
@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
   Mat original;
   original = imread(image_name, CV_8UC1);
   adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 35,25);
+
+  // raster for splitting lines
   for (int i = 100; i < iMat->rows; i+=100) {
       line(*iMat, Point(0,i), Point(iMat->cols, i), Scalar(255,255,255), 2, LINE_8);
   }
@@ -140,54 +142,12 @@ int main(int argc, char *argv[])
       cerr << "image is empty!" << endl;
       return -1;
     }
-/*
-  // Setup SimpleBlobDetector parameters.
-  SimpleBlobDetector::Params params;
 
-  // Change thresholds
-  params.minThreshold = 100;
-  params.maxThreshold = 150;
-
-  // Filter by Area.
-  params.filterByArea = true ;
-  params.minArea = 300;
-
-  // Filter by Circularity
-  params.filterByCircularity = false;
-  params.minCircularity = 0.1f;
-
-  // Filter by Convexity
-  params.filterByConvexity = false;
-  params.minConvexity = 0.5f;
-
-  // Filter by Inertia
-  params.filterByInertia = false;
-  params.maxInertiaRatio = .1f;
-
-
-  Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
-
-  // Detect blobs.
-  std::vector<KeyPoint> keypoints;
-  detector->detect( *iMat, keypoints);
-
-  // Draw detected blobs as red circles.
-  // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob
-
-  Mat im_with_keypoints = Mat::zeros(iMat->rows, iMat->cols, CV_8UC1);
-  bitwise_not(im_with_keypoints, im_with_keypoints);
-  drawKeypoints( *iMat, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-*/
-  // Show blobs
-  // showMat("input", im_with_keypoints, 1);
 
   vector<contour> contours;
   vector<Vec4i> hierarchy;
   findContours(*iMat, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
-  /*Mat drawing = Mat::zeros( iMat->size(), CV_8UC3 );
-  drawColorContours(drawing, contours, hierarchy);*/
 
-  //showMat( "Contours", drawing, 10 );
   vector<vector<Point>> largeContours;
 
   for(auto vec=contours.begin(); vec!=contours.end(); vec++){
@@ -198,21 +158,9 @@ int main(int argc, char *argv[])
 
   Mat arrLargeContours = Mat::zeros(original.rows, original.cols, CV_8UC3);
 
-  //showMat("Large contours", arrLargeContours, 10);
-/*
-  Mat withLine;
-  Point tl, br;
-  for(auto it=largeContours.begin(); it!=largeContours.end();it++){
-      findVerticalLines(*it, tl, br);
-      arrowedLine(arrLargeContours,tl, br, Scalar(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256)), 2, LINE_AA);
-  }
-*/
-
   Mat imatcolor = Mat(iMat->rows, iMat->cols, CV_8UC3);
   cvtColor(original, imatcolor,COLOR_GRAY2BGR);
   drawColorContours(imatcolor, largeContours, hierarchy);
-  //addWeighted(arrLargeContours, 0.5, imatcolor, 0.5, 0, arrLargeContours);
-
   vector<float> widths;
 
   vector<RotatedRect> rectangles;
