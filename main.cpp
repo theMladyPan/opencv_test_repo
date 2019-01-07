@@ -102,7 +102,7 @@ void findVerticalLines(contour input, Point &top, Point &bot){
 void drawColorContours(Mat &destArray, vector<contour> &contours, vector<Vec4i> &hierarchy){
     for( size_t i = 0; i< contours.size(); i++ )
     {
-        auto color = Scalar( 127,127,255 );
+        auto color = Scalar( 0,0,125 );
         drawContours( destArray, contours, (int)i, color, 1, LINE_AA, hierarchy, 0);
     }
 }
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
       cerr << "image is empty!" << endl;
       return -1;
     }
-
+/*
   // Setup SimpleBlobDetector parameters.
   SimpleBlobDetector::Params params;
 
@@ -177,15 +177,15 @@ int main(int argc, char *argv[])
   Mat im_with_keypoints = Mat::zeros(iMat->rows, iMat->cols, CV_8UC1);
   bitwise_not(im_with_keypoints, im_with_keypoints);
   drawKeypoints( *iMat, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-
+*/
   // Show blobs
   // showMat("input", im_with_keypoints, 1);
 
   vector<contour> contours;
   vector<Vec4i> hierarchy;
   findContours(*iMat, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
-  Mat drawing = Mat::zeros( iMat->size(), CV_8UC3 );
-  drawColorContours(drawing, contours, hierarchy);
+  /*Mat drawing = Mat::zeros( iMat->size(), CV_8UC3 );
+  drawColorContours(drawing, contours, hierarchy);*/
 
   //showMat( "Contours", drawing, 10 );
   vector<vector<Point>> largeContours;
@@ -196,9 +196,8 @@ int main(int argc, char *argv[])
         }
   }
 
-  Mat arrLargeContours = Mat::zeros(drawing.rows, drawing.cols, CV_8UC3);
+  Mat arrLargeContours = Mat::zeros(original.rows, original.cols, CV_8UC3);
 
-  drawColorContours(arrLargeContours, largeContours, hierarchy);
   //showMat("Large contours", arrLargeContours, 10);
 /*
   Mat withLine;
@@ -208,13 +207,12 @@ int main(int argc, char *argv[])
       arrowedLine(arrLargeContours,tl, br, Scalar(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256)), 2, LINE_AA);
   }
 */
-  end = chrono::high_resolution_clock::now();
-  elapsed = end-start;
 
   Mat imatcolor = Mat(iMat->rows, iMat->cols, CV_8UC3);
   cvtColor(original, imatcolor,COLOR_GRAY2BGR);
-  addWeighted(arrLargeContours, 0.5, imatcolor, 0.5, 0, arrLargeContours);
-  cout << "Got and calculated in " << elapsed.count() << " ms\n";
+  drawColorContours(imatcolor, largeContours, hierarchy);
+  //addWeighted(arrLargeContours, 0.5, imatcolor, 0.5, 0, arrLargeContours);
+
   vector<float> widths;
 
   vector<RotatedRect> rectangles;
@@ -224,21 +222,26 @@ int main(int argc, char *argv[])
   for(auto rectangle:rectangles){
 
         Point2f rect_points[4]; rectangle.points( rect_points );
-        auto randomColor(Scalar(rng.uniform(0,256), rng.uniform(0,256), rng.uniform(0,256)));
+        auto randomColor(Scalar(rng.uniform(0,125), rng.uniform(0,125), rng.uniform(0,125)));
         for( int j = 0; j < 4; j++ ){
-          line( arrLargeContours, rect_points[j], rect_points[(j+1)%4], randomColor, 1, LINE_AA );
+          line( imatcolor, rect_points[j], rect_points[(j+1)%4], randomColor, 1, LINE_AA );
         }
         stringstream center;
         float lesser(rectangle.size.width<rectangle.size.height?rectangle.size.width:rectangle.size.height);
         widths.push_back(lesser);
         center<<"Width "<<lesser<<" pix";
-        putText(arrLargeContours, center.str(), rectangle.center, FONT_HERSHEY_COMPLEX, 1, randomColor, 1, LINE_AA);
+        putText(imatcolor, center.str(), rectangle.center, FONT_HERSHEY_COMPLEX, 1, randomColor, 1, LINE_AA);
 
 }
   stringstream text;
   text << "Average line width: "<<average(widths)<< "pix.";
-  putText(arrLargeContours, "Vertical line detector", Point(10,50), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_AA);
-  putText(arrLargeContours, text.str(), Point(10,100), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_AA);
-  showMat("Lines", arrLargeContours);
+  putText(imatcolor, "Vertical line detector", Point(10,50), FONT_HERSHEY_COMPLEX, 1, Scalar(125,125,0), 1, LINE_AA);
+  putText(imatcolor, text.str(), Point(10,100), FONT_HERSHEY_COMPLEX, 1, Scalar(125,125,0), 1, LINE_AA);
+
+
+  end = chrono::high_resolution_clock::now();
+  elapsed = end-start;
+  cout << "Got and calculated in " << elapsed.count() << " ms\n";
+  showMat("Lines", imatcolor);
   return 0;
 }
