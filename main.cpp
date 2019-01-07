@@ -17,6 +17,16 @@ RNG rng(12345);
 
 #define TEST_IMAGE "/home/stanke/samples/original2.png";
 
+double average(vector<float> &array){
+    double average(0);
+    int num(0);
+    for(auto it : array){
+        average+=static_cast<double>(it);
+        num++;
+    }
+    return average/static_cast<double>(num);
+}
+
 Point avgPoint(vector<Point> &points){
     int x(0), y(0), i(0);
     for(auto it=points.begin();it!=points.end();it++){
@@ -116,10 +126,17 @@ int main(int argc, char *argv[])
   auto iMat = new Mat();
   Mat original;
   original = imread(image_name, CV_8UC1);
+  auto ciarove = Mat(original);
+  for (int i = 100; i < original.rows; i+=100) {
+      line(ciarove, Point(0,i), Point(original.cols, i), Scalar(255,255,255), 2, LINE_8);
+  }
+  for (int i = 100; i < original.cols; i+=100) {
+      line(ciarove, Point(i,0), Point(i, original.rows), Scalar(255,255,255), 2, LINE_8);
+  }
   adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 35,25);
   copyMakeBorder(*iMat, *iMat, 1, 1, 1, 1, BORDER_CONSTANT, 255);
   copyMakeBorder(original, original, 1, 1, 1, 1, BORDER_CONSTANT, 255);
-  showMat("AT", *iMat, 1);
+  //showMat("AT", *iMat, 1);
   if(iMat->empty()){
       cerr << "image is empty!" << endl;
       return -1;
@@ -195,11 +212,11 @@ int main(int argc, char *argv[])
   end = chrono::high_resolution_clock::now();
   elapsed = end-start;
 
-  putText(arrLargeContours, "Vertical line detector", Point(10,50), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_AA);
   Mat imatcolor = Mat(iMat->rows, iMat->cols, CV_8UC3);
   cvtColor(original, imatcolor,COLOR_GRAY2BGR);
   addWeighted(arrLargeContours, 0.5, imatcolor, 0.5, 0, arrLargeContours);
   cout << "Got and calculated in " << elapsed.count() << " ms\n";
+  vector<float> widths;
 
   vector<RotatedRect> rectangles;
   for(auto contour: largeContours) {
@@ -214,11 +231,15 @@ int main(int argc, char *argv[])
         }
         stringstream center;
         float lesser(rectangle.size.width<rectangle.size.height?rectangle.size.width:rectangle.size.height);
+        widths.push_back(lesser);
         center<<"Width "<<lesser<<" pix";
         putText(arrLargeContours, center.str(), rectangle.center, FONT_HERSHEY_COMPLEX, 1, randomColor, 1, LINE_AA);
 
 }
-
+  stringstream text;
+  text << "Average line width: "<<average(widths)<< "pix.";
+  putText(arrLargeContours, "Vertical line detector", Point(10,50), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_AA);
+  putText(arrLargeContours, text.str(), Point(10,100), FONT_HERSHEY_COMPLEX, 1, Scalar(255,255,0), 1, LINE_AA);
   showMat("Lines", arrLargeContours);
   return 0;
 }
