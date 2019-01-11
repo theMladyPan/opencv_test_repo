@@ -7,6 +7,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d.hpp>
 #include <math.h>
+#include <leastsquares.h>
 
 using namespace cv;
 using namespace std;
@@ -15,7 +16,7 @@ typedef vector<Point> contour;
 
 RNG rng(12345);
 
-#define TEST_IMAGE "/home/stanke/samples/original3.png";
+#define TEST_IMAGE "/home/stanke/test.png";
 
 double average(vector<float> &array){
     double average(0);
@@ -30,7 +31,7 @@ double average(vector<float> &array){
 int showMat(string name, Mat &inpArr, int delay_ms=0){
     namedWindow(name, WINDOW_NORMAL);// Create a window for display.
     imshow(name, inpArr);                   // Show our image inside it.
-    return waitKey(delay_ms);
+     return waitKey(delay_ms);
 }
 
 void drawColorContours(Mat &destArray, vector<contour> &contours, vector<Vec4i> &hierarchy){
@@ -60,15 +61,7 @@ int main(int argc, char *argv[])
   auto iMat = new Mat();
   Mat original;
   original = imread(image_name, CV_8UC1);
-  adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 35,25);
-
-  // raster for splitting lines
-  for (int i = 100; i < iMat->rows; i+=100) {
-      line(*iMat, Point(0,i), Point(iMat->cols, i), Scalar(255,255,255), 2, LINE_8);
-  }
-  for (int i = 100; i < iMat->cols; i+=100) {
-      line(*iMat, Point(i,0), Point(i, iMat->rows), Scalar(255,255,255), 2, LINE_8);
-  }
+  adaptiveThreshold(original, *iMat, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 55,25);
   copyMakeBorder(*iMat, *iMat, 1, 1, 1, 1, BORDER_CONSTANT, 255);
   copyMakeBorder(original, original, 1, 1, 1, 1, BORDER_CONSTANT, 255);
   showMat("AT", *iMat, 1);
@@ -77,7 +70,6 @@ int main(int argc, char *argv[])
       return -1;
     }
 
-
   vector<contour> contours;
   vector<Vec4i> hierarchy;
   findContours(*iMat, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
@@ -85,8 +77,9 @@ int main(int argc, char *argv[])
   vector<vector<Point>> largeContours;
 
   for(auto vec=contours.begin(); vec!=contours.end(); vec++){
-      if(vec->size() > 50){
+      if(vec->size() > 200){
             largeContours.push_back(*vec);
+            break;
         }
   }
 
@@ -94,32 +87,14 @@ int main(int argc, char *argv[])
 
   Mat imatcolor = Mat(iMat->rows, iMat->cols, CV_8UC3);
   cvtColor(original, imatcolor,COLOR_GRAY2BGR);
+  drawColorContours(arrLargeContours, largeContours, hierarchy);
   drawColorContours(imatcolor, largeContours, hierarchy);
-  vector<float> widths;
+  cvtColor(arrLargeContours, arrLargeContours, COLOR_BGR2GRAY);
 
-  vector<RotatedRect> rectangles;
-  for(auto contour: largeContours) {
-    rectangles.push_back(minAreaRect(contour));
-  }
-  for(auto rectangle:rectangles){
+  //putText(imatcolor, text.str(), Point(10,100), FONT_HERSHEY_COMPLEX, 1, Scalar(125,125,0), 1, LINE_AA);
+  LeastSquares ls(arrLargeContours);
 
-        Point2f rect_points[4]; rectangle.points( rect_points );
-        auto randomColor(Scalar(rng.uniform(0,125), rng.uniform(0,125), rng.uniform(0,125)));
-        for( int j = 0; j < 4; j++ ){
-          line( imatcolor, rect_points[j], rect_points[(j+1)%4], randomColor, 1, LINE_AA );
-        }
-        stringstream center;
-        float lesser(rectangle.size.width<rectangle.size.height?rectangle.size.width:rectangle.size.height);
-        widths.push_back(lesser);
-        center<<"Width "<<lesser<<" pix";
-        putText(imatcolor, center.str(), rectangle.center, FONT_HERSHEY_COMPLEX, 1, randomColor, 1, LINE_AA);
-
-}
-  stringstream text;
-  text << "Average line width: "<<average(widths)<< "pix.";
-  putText(imatcolor, "Vertical line detector", Point(10,50), FONT_HERSHEY_COMPLEX, 1, Scalar(125,125,0), 1, LINE_AA);
-  putText(imatcolor, text.str(), Point(10,100), FONT_HERSHEY_COMPLEX, 1, Scalar(125,125,0), 1, LINE_AA);
-
+  line(imatcolor, Point(0,ls.getIntercept()), Point(300, ls.getSlope()*300+ls.getIntercept()), Scalar(255,127,0), 2, LINE_AA );
 
   end = chrono::high_resolution_clock::now();
   elapsed = end-start;

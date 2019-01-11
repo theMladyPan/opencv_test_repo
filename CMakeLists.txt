@@ -9,15 +9,22 @@ set (openCV_test_VERSION_MINOR 1)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt5Core)
-
 
 # find opencv sources and libs
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules)
 find_package( OpenCV REQUIRED )
 include_directories(${OpenCV_INCLUDE_DIRS})
-set (EXTRA_LIBS ${EXTRA_LIBS} ${OpenCV_LIBS})
-set (EXTRA_LIBS ${EXTRA_LIBS} Qt5::Core)
+
+find_library(MY_LIBS
+    libmy-libs
+    HINTS /usr/lib/
+    )
+
+set (EXTRA_LIBS
+    ${OpenCV_LIBS}
+    ${MY_LIBS}
+    )
+message(${EXTRA_LIBS})
 
 include_directories(src/)
 set( project_sources
