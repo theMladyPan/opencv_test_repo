@@ -15,23 +15,20 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake-mod
 find_package( OpenCV REQUIRED )
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-#find_library(MY_LIBS
-#    libmy-libs*
-#    HINTS /usr/lib/
-#    )
+find_library(MY_LIBS
+    libmy-libs.a
+    HINTS /usr/lib/
+    )
 
 set (EXTRA_LIBS
     ${OpenCV_LIBS}
-#    ${MY_LIBS}
+    ${MY_LIBS}
     )
 message(${EXTRA_LIBS})
 
 include_directories(src/)
 set( project_sources
-#  main.cpp
    main.cpp
-   leastsquares.cpp
-   matrix_operations.cpp
 )
 add_executable(${PROJECT_NAME} ${project_sources})
 target_link_libraries (${PROJECT_NAME}  ${EXTRA_LIBS})
